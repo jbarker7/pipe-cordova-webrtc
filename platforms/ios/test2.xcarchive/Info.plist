@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ApplicationProperties</key>
+	<dict>
+		<key>ApplicationPath</key>
+		<string>Applications/test2.app</string>
+		<key>CFBundleIdentifier</key>
+		<string>com.ionicframework.test2908604</string>
+		<key>CFBundleShortVersionString</key>
+		<string>0.0.1</string>
+		<key>CFBundleVersion</key>
+		<string>0.0.1</string>
+		<key>SigningIdentity</key>
+		<string>iPhone Developer: josh@joshbarker.net (H96C5KTY5S)</string>
+	</dict>
+	<key>ArchiveVersion</key>
+	<integer>2</integer>
+	<key>CreationDate</key>
+	<date>2017-06-16T21:25:12Z</date>
+	<key>Name</key>
+	<string>test2</string>
+	<key>SchemeName</key>
+	<string>test2</string>
+</dict>
+</plist>

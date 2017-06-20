@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no, width=device-width">
+    <title></title>
+
+    <link rel="manifest" href="manifest.json">
+
+    <!-- un-comment this code to enable service worker
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(() => console.log('service worker installed'))
+          .catch(err => console.log('Error', err));
+      }
+    </script>-->
+
+    <link href="lib/ionic/css/ionic.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+
+    <!-- IF using Sass (run gulp sass first), then uncomment below and remove the CSS includes above
+    <link href="css/ionic.app.css" rel="stylesheet">
+    -->
+
+    <!-- ionic/angularjs js -->
+    <script src="lib/ionic/js/ionic.bundle.js"></script>
+
+    <!-- cordova script (this will be a 404 during development) -->
+    <script src="cordova.js"></script>
+
+    <!-- your app's js -->
+    <script src="js/app.js"></script>
+    <script src="js/controllers.js"></script>
+    <script src="js/services.js"></script>
+
+<!-- begin video recorder code -->
+<script type="text/javascript">
+/*
+(function() {var pipe = document.createElement('script'); pipe.type = 'text/javascript'; pipe.async = true;pipe.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + 's1.addpipe.com/1.3/pipe.js';var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(pipe, s);})();
+*/
+var size = {width:400,height:330};
+var flashvars = {qualityurl: "avq/300p.xml",accountHash:"89d0cc88c62aec044627472f0a30785e", eid:1, showMenu:"true", mrt:120,sis:0,asv:1,mv:0};
+var closedAccount =  0;
+var showPoweredBy = false;
+var prefLang = 'en-us';
+document.VideoRecorder = new Object();
+//declared so that there are in scope with removePipeRecorder()
+var webRtcPeer;
+var pipeRecorderRemoved;
+var intervals;
+
+</script>
+<script type="text/javascript" src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+<script type="text/javascript" src="http://s1.addpipe.com/1.3/webrtc-js/kurento-client.js"></script>
+<script type="text/javascript" src="http://s1.addpipe.com/1.3/webrtc-js/kurento-utils.js"></script>
+<script type="text/javascript" src="http://s1.addpipe.com/1.3/webrtc-js/co.js"></script>
+<script type="text/javascript">
+/*
+ *  Copyright (c) 2015 The WebRTC project authors. All Rights Reserved.
+ *
+ *  Use of this source code is governed by a BSD-style license
+ *  that can be found in the LICENSE file in the root of the source
+ *  tree.
+ */
+
+// Meter class that generates a number correlated to audio volume.
+// The meter class itself displays nothing, but it makes the
+// instantaneous and time-decaying volumes available for inspection.
+// It also reports on the fraction of samples that were at or near
+// the top of the measurement range.
+var g = this;
+function SoundMeter(context) {
+  g.context = context;
+  g.instant = 0.0;
+  g.slow = 0.0;
+  g.clip = 0.0;
+  g.script = context.createScriptProcessor(2048, 1, 1);
+  g.script.onaudioprocess = function(event) {
+    var input = event.inputBuffer.getChannelData(0);
+    var i;
+    var sum = 0.0;
+    var clipcount = 0;
+    for (i = 0; i < input.length; ++i) {
+      sum += input[i] * input[i];
+      if (Math.abs(input[i]) > 0.99) {
+        clipcount += 1;
+      }
+    }
+    g.instant = Math.sqrt(sum / input.length);
+    g.slow = 0.95 * g.slow + 0.05 * g.instant;
+    g.clip = clipcount / input.length;
+  };
+}
+
+SoundMeter.prototype.connectToSource = function(stream, callback) {
+  console.log('SoundMeter connecting');
+  try {
+    g.mic = g.context.createMediaStreamSource(stream);
+    g.mic.connect(g.script);
+    // necessary to make sample run, but should not be.
+    g.script.connect(g.context.destination);
+    if (typeof callback !== 'undefined') {
+      callback(null);
+    }
+  } catch (e) {
+    console.error(e);
+    if (typeof callback !== 'undefined') {
+      callback(e);
+    }
+  }
+};
+SoundMeter.prototype.stop = function() {
+  g.mic.disconnect();
+  g.script.disconnect();
+};
+</script>
+<script type="text/javascript" src="http://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.23.0/polyfill.min.js"></script>
+<script type="text/javascript" src="http://unpkg.com/regenerator-runtime@0.10.5/runtime.js"></script>
+  </head>
+  <body ng-app="starter" class="platform-ios platform-cordova platform-webview">
+    <!--
+      The nav bar that will be updated as we navigate between views.
+    -->
+    <ion-nav-bar class="bar-stable">
+      <ion-nav-back-button>
+      </ion-nav-back-button>
+
+<script type="text/babel">
+
+
+(function($) {
+
+	var videoInput;
+	var client;
+	var pipeline;
+	var localCandidates = false;
+	var languageFileURL;
+	
+	var recordCounter;
+	var streamCounter;
+	var lastStreamTime = 0;
+	var actualStreamTime = 0;
+	var autoStopped = false;
+	var streamStartTime;
+	var streamElapsedTime;
+
+	var loadedHeight;
+	var loadedWidth;
+
+	var IDLE = 0;
+	var DISABLED = 1;
+	var RECORDING = 2;
+	var PLAYING = 3;
+	var STOPPED = 4;
+	var PAUSED =  5;
+
+	var state = "init";
+
+	var cam = "";
+	var mic = "";
+	var camNumber = 0;
+	var micNumber = 0;
+
+  var newFileName;
+
+	var btSaveCanBeUsed = true;
+	
+	//vars for cleanup
+	pipeRecorderRemoved = false;
+	intervals = [];
+
+	//var lang = new Array();
+
+	var langCode = "en";
+
+	var recordTxt = "Record Video";
+	var recBtnTxt = "record";
+	var stopBtnTxt = "stop";
+	var playBtnTxt = "play";
+	var pauseBtnTxt = "pause";
+	var saveBtnTxt = "save";
+	var connectingTxt = "Connecting...";
+	var bufferingTxt = "Buffering...";
+	var savingTxt = "Saving...";
+	var savedTxt = "Saved";
+	var blockedTxt = "Access to the webcam has been denied"
+	var noCameraTxt= "You need a webcam to record video";
+	var allowAccessTxt = "Allow access to your webcam";
+
+	//design options
+	var cornerRadius = "8";
+	if(flashvars["cornerradius"]){
+		cornerRadius = flashvars["cornerradius"];
+	}
+
+	var bgCol = "#f6f6f6";
+	if(flashvars["bgCol"]){
+		bgCol = flashvars["bgCol"].replace("0x","#");
+	}
+
+	var menuCol = "#e9e9e9";
+	if(flashvars["menuCol"]){
+		menuCol = flashvars["menuCol"].replace("0x","#");
+	}
+
+	var normalCol = "#334455";
+	if(flashvars["normalCol"]){
+		normalCol = flashvars["normalCol"].replace("0x","#"); 											
+	}
+
+	var overCol = "#556677";
+	if(flashvars["overCol"]){
+		overCol = flashvars["overCol"].replace("0x","#"); 											
+	}
+
+	//init screen
+	var css = document.createElement("style");
+	css.type = "text/css";
+	
+	//maintenance mode flag 
+	var maintenance = 0;
+
+	if(closedAccount == 0){
+		
+		if(maintenance == 1){
+			
+			var cssM = document.createElement("style");
+			cssM.type = "text/css";
+			cssM.innerHTML = "div.pipeRecordRTC{position:relative;width:"+size["width"]+"px;height:"+size["height"]+"px;background-color:#f6f6f6;}div.pipeRecordRTC p {position:absolute;margin:0;left:"+(size["width"]-276)/2+"px;top:"+(size["height"]-21)/2+"px;font-family:sans-serif;color:#334455; font-size:18px;}";
+			document.body.appendChild(cssM);
+			document.getElementById('hdfvr-content').innerHTML = '<div class="pipeRecordRTC"><p>Video recording is in maintenance</p></div>';
+			
+		}else{
+		
+			//detect the language
+			var detectedLang = prefLang;
+			if(detectedLang == "fr" || detectedLang == "de" || detectedLang == "es"){
+				langCode = detectedLang;
+			}
+			
+			languageFileURL = ("https:" == document.location.protocol ? "https://" : "http://")+"s1.addpipe.com/1.3/"+(flashvars["lang"] ? flashvars["lang"] : 'translations/'+langCode+'.xml');
+			if(flashvars["lang"]){
+				if(flashvars["lang"].indexOf("http") != -1){
+					languageFileURL = flashvars["lang"];
+				}
+			}							
+			
+			//load the language XML file
+			$.ajax({
+				url: languageFileURL,
+				dataType: 'xml',
+				success: function(data){
+
+					var xml_node = $('xliff',data);
+
+					recordTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_RECORD_INIT"] > source').text();
+					recBtnTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_RECORD"] > source').text();
+					stopBtnTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_STOP"] > source').text();
+					playBtnTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_PLAY"] > source').text();
+					pauseBtnTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_PAUSE"] > source').text();
+					saveBtnTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_SAVE"] > source').text();
+					connectingTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_CONNECT"] > source').text();
+					bufferingTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_BUFFERING"] > source').text();
+					savingTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_SAVING"] > source').text();
+					savedTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_SAVEOK"] > source').text();
+					blockedTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_ICAMERA2"] > source').text();
+					noCameraTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_TXT_ICAMERA"] > source').text();
+					allowAccessTxt = xml_node.find('xliff > file > body > trans-unit[resname="IDS_ALLOW_ACCESS"] > source').text();
+					/*allText.each(function(){
+						console.log($(this).text());
+						//lang.push($(this).text());
+					});*/
+
+					if(flashvars["sis"] == 0){
+						
+						css.innerHTML = "div.pipeRecordRTC{position: relative; width:"+size["width"]+"px;height:"+size["height"]+"px;background-color:"+bgCol+";border-radius:"+cornerRadius+"px;text-align:center;} div.pipeRecordRTC span {vertical-align:middle;line-height:"+size["height"]+"px;font-family:sans-serif;color:"+normalCol+"; font-size:18px; cursor: pointer;} .pipeRecordRTC span:hover{color:"+overCol+";} ";
+						document.body.appendChild(css);
+
+						if(showPoweredBy ==  0){
+							document.getElementById('hdfvr-content').innerHTML = '<div class="pipeRecordRTC"><span id="pipeStartRecording" ><img src="'+("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/webcam.png" style="vertical-align: middle;"/> '+recordTxt+'</span></div>';
+						}else{
+							document.getElementById('hdfvr-content').innerHTML = '<div class="pipeRecordRTC"><span id="pipeStartRecording" ><img src="'+("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/webcam.png" style="vertical-align: middle;"/> '+recordTxt+'</span><p id="pipeClickPowered" title="Pipe Video Recorder" style="position:absolute;bottom: 0px; left:'+(size["width"]/2 - 40)+'px; text-align:center;text-decoration:underline;font-family:sans-serif;font-size:10px; color:#334455;cursor: pointer;">Powered by Pipe</p></div>';
+							$("#pipeClickPowered").click(refPipe);
+						}
+
+						$('#pipeStartRecording').click(pipeInitRecorder);
+
+					}else{
+						pipeInitRecorder();
+					}
+
+				}
+			});
+		}
+		
+	}else{
+		css.innerHTML = "div.pipeRecordRTC{position: relative;width:"+size["width"]+"px;height:"+size["height"]+"px;background-color:#f6f6f6;text-align:center;}div.pipeRecordRTC span {text-decoration:underline;vertical-align: middle;line-height:"+size["height"]+"px;font-family:sans-serif;color:#334455; font-size:18px; cursor: pointer;}";
+		document.body.appendChild(css);
+		document.getElementById('hdfvr-content').innerHTML = '<div class="pipeRecordRTC"><span id="pipeRedirect" >Add video recording to your website using Pipe</span></div>';
+		$('#pipeRedirect').click(visitPipe);
+	}
+
+
+
+	//init recorder
+	function pipeInitRecorder(){
+
+		//create video interface
+		var menuH = 30;
+		var extraGap = 0;
+		var cornerRadiusNoMenu = 0;
+		if(flashvars["showMenu"] == "false"){
+			menuH = 0;
+			extraGap = 30;
+			cornerRadiusNoMenu = cornerRadius;
+		}
+
+		var css = document.createElement("style");
+		css.type = "text/css";
+		css.innerHTML = ".pipeBtn{display:inline-block;cursor:pointer;opacity: 1;-webkit-transition: .1s ease-in-out;transition: .1s ease-in-out;} .pipeBtn:hover{opacity: .8;} .pipeBtnOff{display:inline-block;opacity:0.1} .pipeTimer{position:absolute;left:"+(size["width"]-57)/2+"px;margin-top:7px;text-align:center;font-family:sans-serif;color:"+normalCol+";font-size:14px;}";
+		document.body.appendChild(css);
+		
+		var cssVid = document.createElement("style");
+		cssVid.type = "text/css";
+		cssVid.innerHTML = ".pipeNormal{background-color:black;border-top-left-radius:"+cornerRadius+"px;border-top-right-radius:"+cornerRadius+"px;border-bottom-left-radius:"+cornerRadiusNoMenu+"px;border-bottom-right-radius:"+cornerRadiusNoMenu+"px;} .pipeMirrored{background-color:black;border-top-left-radius:"+cornerRadius+"px;border-top-right-radius:"+cornerRadius+"px;border-bottom-left-radius:"+cornerRadiusNoMenu+"px;border-bottom-right-radius:"+cornerRadiusNoMenu+"px;transform: rotateY(180deg);-webkit-transform:rotateY(180deg);-moz-transform:rotateY(180deg);}";
+		document.body.appendChild(cssVid);
+
+		if(showPoweredBy == 0){
+			document.getElementById('hdfvr-content').innerHTML = '<div id="pipeVrec" style="position:relative;margin:0;width:'+size["width"]+'px;height:'+size["height"]+'px;font-size:0;"><video id="pipeVideoInput" autoplay width="'+size["width"]+'px" height="'+(size["height"]-menuH)+'px"></video><br/><div id="pipeMenu" style="width:'+size["width"]+'px;height:30px;background-color:'+menuCol+';border-bottom-left-radius:'+cornerRadius+'px;border-bottom-right-radius:'+cornerRadius+'px;"><div id="pipeCounter" class="pipeTimer">00:00/'+digits(flashvars["mrt"])+'</div><img id="pipeRec" class="pipeBtn" src="'+("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/record.png" title="'+recBtnTxt+'"><img id="pipePlay" class="pipeBtn" src="'+("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/play.png" title="'+playBtnTxt+'"></div></div>'
+		}else{
+			document.getElementById('hdfvr-content').innerHTML = '<div id="pipeVrec" style="position:relative;margin:0;width:'+size["width"]+'px;height:'+size["height"]+'px;font-size:0;"><video id="pipeVideoInput" autoplay width="'+size["width"]+'px" height="'+(size["height"]-menuH)+'px"></video><p id="pipeClickPowered" title="Pipe Video Recorder" style="position:absolute;bottom:'+(40-extraGap)+'px;margin:0;left:'+(size["width"]/2 - 40)+'px; text-align:center;text-decoration:underline;font-family:sans-serif;font-size:10px; color:#ffffff;cursor: pointer;">Powered by Pipe</p><div id="pipeMenu" style="width:'+size["width"]+'px;height:30px;background-color:'+menuCol+';border-bottom-left-radius:'+cornerRadius+'px;border-bottom-right-radius:'+cornerRadius+'px;"><div id="pipeCounter" class="pipeTimer">00:00/'+digits(flashvars["mrt"])+'</div><img  id="pipeRec" class="pipeBtn" src="'+("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/record.png" title="'+recBtnTxt+'"><img id="pipePlay" class="pipeBtn" src="'+("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/play.png" title="'+playBtnTxt+'"></div></div>'
+			$("#pipeClickPowered").click(refPipe);
+		}
+
+		
+		//check mirroring
+		//flashvars["mv"] = 0;
+		if(flashvars["mv"] == 1){
+			$('#pipeVideoInput').attr("class","pipeMirrored");
+		}else{
+			$('#pipeVideoInput').attr("class","pipeNormal");
+		}
+		
+		$("#pipeVideoInput").prop('muted', true);
+		
+		//create message overlay
+		var css = document.createElement("style");
+		css.type = "text/css";
+		css.innerHTML = "div.pipeMsgOverlay{position: absolute;width:30%;height:50px;background-color:#0f0f0f; opacity: 0.6;border-radius:10px;left:"+(size["width"]- 30/100*size["width"])/2+"px;top:"+(size["height"]-50)/2+"px;z-index: 1}div.pipeMsgOverlay div {text-align:center;vertical-align: middle;line-height:50px;font-family:sans-serif;color:#ffffff; font-size:18px;}";
+		document.body.appendChild(css);
+
+		var msgDiv = document.createElement("div");
+		msgDiv.id = 'pipeMsgOverlay';
+		msgDiv.className = 'pipeMsgOverlay';
+		document.getElementById('pipeVrec').insertBefore(msgDiv, document.getElementById('pipeVrec').firstChild);
+		$("#pipeMsgOverlay").hide();
+		
+		if(flashvars["asv"] == 0){
+			$("#pipeMenu").append('<img id="pipeSaveVideo" class="pipeBtnOff" src="'+("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/save.png" title="'+saveBtnTxt+'">');
+		}
+
+		var videoInput = document.getElementById('pipeVideoInput');
+		pipeSetStatus(IDLE);
+		
+		
+		//we hide the interface at first and only show it once webcam access has been permitted
+		$("#pipeVrec").hide();
+		
+		//load video quality xml profile	
+		var qualityProfileURL = ("https:" == document.location.protocol ? "https://" : "http://")+"s1.addpipe.com/1.3/"+flashvars["qualityurl"];
+		if(flashvars["qualityurl"].indexOf("http") != -1){
+			qualityProfileURL = flashvars["qualityurl"];
+		}
+		
+		$.ajax({
+		    url: qualityProfileURL,
+		    dataType: 'xml',
+		    success: function(data){
+				var xml_node = $('bandwidth',data);
+				//console.log(xml_node.find('bandwidth > item > w').text());
+
+				loadedWidth = xml_node.find('bandwidth > item > w').text();
+				loadedHeight = xml_node.find('bandwidth > item > h').text();
+
+				console.log(loadedWidth);
+
+				var constraints = {
+				    audio: true,
+				    video: {
+						width: parseInt(loadedWidth),
+						height: parseInt(loadedHeight),
+						framerate: 30
+				    }
+				};
+
+				var options = {
+					localVideo: videoInput,
+					mediaConstraints: constraints
+				}
+
+				if (args.ice_servers) {
+					//console.log("Use ICE servers: " + args.ice_servers);
+					options.configuration = {
+					iceServers : JSON.parse(args.ice_servers)
+					};
+				} else {
+					console.log("Use freeice")
+				}
+				
+				//we show the access message in case the permissions are in pending
+				pipeShowError(allowAccessTxt, 1);
+				
+				webRtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerSendrecv(options, function(error) {
+					if(error){
+						return pipeOnError(error)
+					}else{
+						
+						  $( ".pipeError" ).remove();	
+						  $("#pipeVrec").show();
+						  
+						  state = "idle";
+						
+						 //API function call
+						 if ($.isFunction(window.onCamAccess)) {
+							onCamAccess("true", "");
+						 }
+						 
+						 if ($.isFunction(window.onRecorderReady)) {
+							onRecorderReady("");
+						 }
+						 /*
+					       try {
+						  window.AudioContext = window.AudioContext || window.webkitAudioContext;
+						  window.audioContext = new AudioContext();
+						} catch (e) {
+						  console.log('Web Audio API not supported.');
+						}
+						  var micInterval;
+						  window.stream = webRtcPeer.getLocalStream();
+						  var soundMeter = window.soundMeter = new SoundMeter(window.audioContext);
+						  soundMeter.connectToSource(webRtcPeer.getLocalStream(), function(e) {
+						    if (e) {
+						      alert(e);
+						      return;
+						    }
+
+						    micInterval = setInterval(function() {
+							   
+									if ($.isFunction(window.onMicActivityLevel)) {
+										onMicActivityLevel("", Math.round(soundMeter.instant.toFixed(2) * 100));
+									}	
+							
+						    }, 100);
+						  });
+						 
+						 intervals.push(micInterval);*/
+					}
+				});
+
+		    },error: function(data){
+				console.log('Error loading audio-video profile XML data');
+		    }
+		});
+
+		if(flashvars["showMenu"] == "false"){
+			$("#pipeMenu").hide();
+		}
+
+		//call onFlashReady which is part of the JS Events API
+		if ($.isFunction(window.onFlashReady)) {
+			onFlashReady("");
+		}
+
+		//get devices
+		navigator.mediaDevices.enumerateDevices().then(function(devices) {
+			devices.forEach(function(device) {
+				//console.log(device.kind + ": " + device.label + " id = " + device.deviceId);
+				if(device.kind == "audioinput"){
+					micNumber++;
+					
+					if(mic == ""){
+						mic = device.label;
+					}
+				}
+				if(device.kind == "videoinput"){
+					camNumber++;
+					
+					if(cam == ""){
+						cam = device.label;
+					}
+				}
+			});
+			
+			//API function call
+			if ($.isFunction(window.userHasCamMic)) {
+				userHasCamMic(camNumber, micNumber, "");
+			}
+			
+			//check if we are in audio-only mode
+			if(camNumber == 0){
+				//add audio-only thumbnail
+				$('<img id="pipeAudioOnly" style="position:absolute; left:'+(size["width"] - 100)/2+'px;top:'+(size["height"] - 100)/2+'px;" src="'+("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/audioOnly.png">').insertBefore("#pipeVideoInput");
+			}
+			
+		})
+		.catch(function(err) {
+			console.log(err.name + ": " + err.message);
+		});
+		
+	}
+
+	function getopts(args, opts){
+		var result = opts.default || {};
+		args.replace(new RegExp("([^?=&]+)(=([^&]*))?", "g"),function($0, $1, $2, $3) { result[$1] = decodeURI($3); });
+		return result;
+	};
+
+	//ice_servers: '[{"url":"turn:discovery.addpipe.com:443?transport=tcp","username":"addpipe","credential":"superTurnServer"}]'
+	//"stun.l.google.com:19302","stun1.l.google.com:19302","stun2.l.google.com:19302","stun3.l.google.com:19302","stun4.l.google.com:19302","stun.ekiga.net","stun.ideasip.com","stun.schlund.de","stun.stunprotocol.org:3478","stun.voiparound.com","stun.voipbuster.com","stun.voipstunt.com","stun.voxgratia.org","stun.services.mozilla.com"
+	var args = getopts(location.search,{
+	  default:
+		{
+		    ws_uri: 'wss://s3.addpipe.com:443/kurento',
+		    file_uri: 'file:///var/www/html/v_rtc/default.webm', // file to be stored in media server default value
+		    ice_servers: '[{"url":"stun:stun.l.google.com:19302"},{"url":"stun:stun1.l.google.com:19302"},{"url":"stun:stun2.l.google.com:19302"},{"url":"stun:stun3.l.google.com:19302"},{"url":"stun:stun4.l.google.com:19302"},{"url":"stun:stun.ekiga.net"},{"url":"stun:stun.ideasip.com"},{"url":"stun:stun.schlund.de"},{"url":"stun:stun.stunprotocol.org:3478"},{"url":"stun:stun.voiparound.com"},{"url":"stun:stun.voipbuster.com"},{"url":"stun:stun.voipstunt.com"},{"url":"stun:stun.voxgratia.org"},{"url":"stun:stun.services.mozilla.com"},{"url":"turn:discovery.addpipe.com:443?transport=tcp","username":"addpipe","credential":"superTurnServer"}]'
+		}
+	});
+
+
+	function pipeSetStatus(nextState){
+	  switch(nextState){
+	    case IDLE:
+	     // $('#pipeRec').attr('disabled', false)
+	     // $('#pipePlay').attr('disabled',  true)
+
+	      $('#pipeRec').off("click");
+	      $('#pipeRec').click(pipeStart);
+	      $('#pipeRec').attr("class","pipeBtn");
+
+	      $('#pipePlay').off("click");
+	      $('#pipePlay').attr("class","pipeBtnOff");
+	      break;
+
+	    case RECORDING:
+	      //$('#pipeRec').attr('disabled', false)
+	      //$('#pipePlay').attr('disabled',  true)
+
+	      $('#pipeRec').off("click");
+	      $('#pipeRec').click(pipeStop);
+	      $('#pipeRec').attr("class","pipeBtn");
+
+	      $('#pipePlay').off("click");
+	      $('#pipePlay').attr("class","pipeBtnOff");
+	      break;
+
+	    case PLAYING:
+	      //$('#pipeRec').attr('disabled', true)
+	      //$('#pipePlay').attr('disabled',  false)
+
+	      $('#pipeRec').off("click");
+	      $('#pipeRec').attr("class","pipeBtnOff");
+
+	      $('#pipePlay').off("click");
+	      $('#pipePlay').click(pipePausePlayback);
+	      $('#pipePlay').attr("class","pipeBtn");
+	      break;
+
+	    case STOPPED:
+	      //$('#pipeRec').attr('disabled', false)
+	      //$('#pipePlay').attr('disabled',  false)
+
+	      $('#pipeRec').off("click");
+	      $('#pipeRec').click(pipeStart);
+	      $('#pipeRec').attr("class","pipeBtn");
+
+	      $('#pipePlay').off("click");
+	      $('#pipePlay').click(pipePlay);
+	      $('#pipePlay').attr("class","pipeBtn");
+	      break;
+	      
+	    case PAUSED:
+	      //$('#pipeRec').attr('disabled', false)
+	      //$('#pipePlay').attr('disabled',  false)
+
+	      $('#pipeRec').off("click");
+	      $('#pipeRec').attr("class","pipeBtnOff");
+
+	      $('#pipePlay').off("click");
+	      $('#pipePlay').click(pipePlay);
+	      $('#pipePlay').attr("class","pipeBtn");
+	      break;
+
+	    case DISABLED:
+	      //$('#pipeRec').attr('disabled', true)
+	      //$('#pipePlay').attr('disabled',  true)
+
+	      $('#pipeRec').off("click");
+	      $('#pipeRec').attr("class","pipeBtnOff");
+
+	      $('#pipePlay').off("click");
+	      $('#pipePlay').attr("class","pipeBtnOff");
+	      break;
+	  }
+	}
+
+
+	function setIceCandidateCallbacks(webRtcPeer, webRtcEp, onerror)
+	{
+	  webRtcPeer.on('icecandidate', function(candidate) {
+	    console.log("Local candidate:",candidate);
+
+	    candidate = kurentoClient.getComplexType('IceCandidate')(candidate);
+
+	    webRtcEp.addIceCandidate(candidate, onerror)
+	    
+	    localCandidates = true;
+	    
+	  });
+
+	  webRtcEp.on('OnIceCandidate', function(event) {
+	    var candidate = event.candidate;
+
+	    console.log("Remote candidate:",candidate);
+
+	    webRtcPeer.addIceCandidate(candidate, onerror);
+	  });
+	}
+
+	function pipeStart() {
+		//console.log("pipeStart " + state);
+
+		if(state == "idle" || state == "recorded" || state == "played" || state == "paused"){
+			
+			$("#pipeVideoInput").prop('muted', true);
+
+			btSaveCanBeUsed = true;
+
+			if(state == "paused"){
+
+				if (webRtcPeer) {
+				    webRtcPeer.dispose();
+				    webRtcPeer = null;
+				}
+
+				if(pipeline){
+				   pipeline.release();
+				   pipeline = null;
+				}
+
+				 var constraints = {
+				     audio: true,
+				     video: {
+					width: parseInt(loadedWidth),
+					height: parseInt(loadedHeight),
+					framerate: 30
+				     }
+				 };
+
+				  var options =
+				  {
+				    localVideo: videoInput,
+				    mediaConstraints: constraints
+				  }
+
+				  if (args.ice_servers) {
+				    //console.log("Use ICE servers: " + args.ice_servers);
+				    options.configuration = {
+				      iceServers : JSON.parse(args.ice_servers)
+				    };
+				  } else {
+				    console.log("Use freeice")
+				  }
+
+				  webRtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerSendrecv(options, function(error)
+				  {
+				    if(error) return pipeOnError(error)
+
+				  });
+			}
+
+
+			state = "recording";
+
+			 pipeSetStatus(DISABLED);
+
+			 if(flashvars["asv"] == 0){
+				//$('#pipeSaveVideo').attr('disabled',  true);
+				$('#pipeSaveVideo').off("click");
+				$('#pipeSaveVideo').attr("class","pipeBtnOff");
+			}
+
+			 pipeShowMessage(connectingTxt);
+			 autoStopped = false;
+
+			 webRtcPeer.generateOffer(pipeOnStartOffer);
+
+			 //API function call
+			 if ($.isFunction(window.btRecordPressed)) {
+				btRecordPressed("");
+			 }
+		}
+	}
+
+	function pipeStop() {
+		//console.log("pipeStop " + state);
+		if(state == "recording"){
+
+			state = "recorded";
+
+			$('#pipeRec').attr("src", ("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/record.png');
+			$('#pipeRec').attr("title", recBtnTxt);
+
+			  clearInterval(recordCounter);
+			  clearInterval(streamCounter);
+
+			  if (webRtcPeer) {
+			    webRtcPeer.dispose();
+			    webRtcPeer = null;
+			  }
+
+			  if(pipeline){
+			    pipeline.release();
+			    pipeline = null;
+			  }
+
+			  //pipeHideMessage();
+
+
+			  // ===== re-init recorder =====
+				 var constraints = {
+				     audio: true,
+				     video: {
+					width: parseInt(loadedWidth),
+					height: parseInt(loadedHeight),
+					framerate: 30
+				     }
+				 };
+
+				  var options =
+				  {
+				    localVideo: videoInput,
+				    mediaConstraints: constraints
+				  }
+
+				  if (args.ice_servers) {
+				    //console.log("Use ICE servers: " + args.ice_servers);
+				    options.configuration = {
+				      iceServers : JSON.parse(args.ice_servers)
+				    };
+				  } else {
+				    console.log("Use freeice")
+				  }
+
+				  webRtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerSendrecv(options, function(error)
+				  {
+				    if(error) return pipeOnError(error)
+
+				  });
+
+			  // ===== save the video =====
+			  if(flashvars["asv"] == 1){
+				  pipeSaveVideo();
+			  }else{
+				  if(btSaveCanBeUsed == true){
+					  //$('#pipeSaveVideo').attr('disabled',  false);
+					  $('#pipeSaveVideo').off("click");
+					  $('#pipeSaveVideo').click(pipeSaveVideo);
+					  $('#pipeSaveVideo').attr("class","pipeBtn");
+				  }
+			  }
+
+			  pipeSetStatus(STOPPED);
+
+			  if(lastStreamTime > flashvars["mrt"]){
+				  lastStreamTime = flashvars["mrt"] + 1;
+			  }
+
+			  document.getElementById("pipeCounter").innerHTML = "00:00/"+digits(lastStreamTime-1);
+			  if(autoStopped == true){
+				actualStreamTime = lastStreamTime;
+			  }else{
+				  actualStreamTime = lastStreamTime - 1;
+			  }
+
+			   //API function call
+			  if ($.isFunction(window.btStopRecordingPressed)) {
+				btStopRecordingPressed("");
+			  }
+			  if ($.isFunction(window.onUploadDone)) {
+				onUploadDone(newFileName, streamElapsedTime, "", "", "MPEG Audio Layer 2", "H.264", "webm");
+			  }
+		}
+	}
+
+
+	function pipePlay(){
+		//console.log("pipePlay " + state);
+		
+		if(state == "recorded" || state == "played"){
+			
+			//unmirror video if needed
+			if(flashvars["mv"] == 1){
+				$('#pipeVideoInput').attr("class","pipeNormal");
+			}
+			
+			state = "playing";
+
+			$('#pipePlay').attr("src", ("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/pause.png');
+			$('#pipePlay').attr("title", pauseBtnTxt);
+
+			 pipeSetStatus(DISABLED)
+
+			  if(flashvars["asv"] == 0){
+				  //$('#pipeSaveVideo').attr('disabled',  true);
+				  $('#pipeSaveVideo').off("click");
+				  $('#pipeSaveVideo').attr("class", "pipeBtnOff");
+			  }
+
+			  pipeShowMessage(bufferingTxt);
+
+			var constraints = {
+				     audio: true,
+				     video: {
+					width: parseInt(loadedWidth),
+					height: parseInt(loadedHeight),
+					framerate: 30
+				     }
+				 };
+
+			  var options =
+			  {
+			    remoteVideo: videoInput,
+			    mediaConstraints: constraints
+			  }
+
+			  if (args.ice_servers) {
+			    //console.log("Use ICE servers: " + args.ice_servers);
+			    options.configuration = {
+			      iceServers : JSON.parse(args.ice_servers)
+			    };
+			  } else {
+			    console.log("Use freeice")
+			  }
+			  
+			  //re-initializing the webRTC peer in order to stop accesing the camera during playback
+			  if (webRtcPeer) {
+				webRtcPeer.dispose();
+				webRtcPeer = null;
+			  }	
+
+			  webRtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(options, function(error){
+			    if(error) return pipeOnError(error)
+
+			    this.generateOffer(pipeOnPlayOffer)
+			  });
+
+		}else if(state == "paused"){
+			
+			//unmirror video if needed
+			if(flashvars["mv"] == 1){
+				$('#pipeVideoInput').attr("class","pipeNormal");
+			}
+
+			$("#pipeVideoInput").prop('muted', false);
+
+			state = "playing";
+
+			pipeSetStatus(PLAYING)
+
+			  if(flashvars["asv"] == 0){
+				  //$('#pipeSaveVideo').attr('disabled',  true);
+				  $('#pipeSaveVideo').off("click");
+				  $('#pipeSaveVideo').attr("class", "pipeBtnOff");
+			  }
+
+			recordCounter = setInterval(pipeCounterForPlayer ,1000);
+			intervals.push(recordCounter);
+
+			co(function*(){
+			   try{
+				yield player.play();
+
+				$('#pipePlay').attr("src", ("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/pause.png');
+				$('#pipePlay').attr("title",pauseBtnTxt);
+
+			   } catch(e){
+				pipeOnError(e);
+			     }
+			})();
+
+		}
+
+		//API function call
+		if ($.isFunction(window.btPlayPressed)) {
+			btPlayPressed("");
+		}
+	}
+
+	function pipeStopPlayer(){
+		
+		if(state == "playing" || state == "paused"){
+			
+			//re-mirror the video if needed
+			if(flashvars["mv"] == 1){
+				$('#pipeVideoInput').attr("class","pipeMirrored");
+			}else{
+				$('#pipeVideoInput').attr("class","pipeNormal");
+			}
+			
+			$("#pipeVideoInput").prop('muted', true);
+
+			state = "played";
+
+			$('#pipePlay').attr("src", ("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/play.png');
+			$('#pipePlay').attr("title", playBtnTxt);
+
+			clearInterval(recordCounter);
+
+			if (webRtcPeer) {
+			    webRtcPeer.dispose();
+			    webRtcPeer = null;
+			}
+
+			if(pipeline){
+			   pipeline.release();
+			   pipeline = null;
+			}
+
+			//pipeHideMessage();
+			
+			if(pipeRecorderRemoved == false){
+			
+				 //re-init recorder
+				 var constraints = {
+				     audio: true,
+				     video: {
+					width: parseInt(loadedWidth),
+					height: parseInt(loadedHeight),
+					framerate: 30
+				     }
+				 };
+
+				  var options =
+				  {
+				    localVideo: videoInput,
+				    mediaConstraints: constraints
+				  }
+
+				  if (args.ice_servers) {
+				    //console.log("Use ICE servers: " + args.ice_servers);
+				    options.configuration = {
+				      iceServers : JSON.parse(args.ice_servers)
+				    };
+				  } else {
+				    console.log("Use freeice")
+				  }
+
+				  webRtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerSendrecv(options, function(error)
+				  {
+				    if(error) return pipeOnError(error)
+
+				  });
+			}
+
+			pipeSetStatus(STOPPED);
+
+			if(flashvars["asv"] == 0 && btSaveCanBeUsed == true){
+			  //$('#pipeSaveVideo').attr('disabled',  false);
+			    $('#pipeSaveVideo').off("click");
+			    $('#pipeSaveVideo').click(pipeSaveVideo);
+			    $('#pipeSaveVideo').attr("class", "pipeBtn");
+			}
+
+			//API function call
+			if ($.isFunction(window.onPlaybackComplete)) {
+				onPlaybackComplete("");
+			}
+		}
+	}
+
+	function pipePausePlayback(){
+
+		if(state == "playing"){
+			
+			$("#pipeVideoInput").prop('muted', true);
+
+			state = "paused";
+
+			pipeSetStatus(PAUSED);
+			if(flashvars["asv"] == 0 && btSaveCanBeUsed == true){
+				//$('#pipeSaveVideo').attr('disabled',  false);
+				  $('#pipeSaveVideo').off("click");
+				  $('#pipeSaveVideo').click(pipeSaveVideo);
+				  $('#pipeSaveVideo').attr("class", "pipeBtn");
+			}
+
+			clearInterval(recordCounter);
+
+			co(function*(){
+			   try{
+				yield player.pause();
+
+				$('#pipePlay').attr("src", ("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/play.png');
+				$('#pipePlay').attr("title", playBtnTxt);
+
+			   } catch(e){
+				pipeOnError(e);
+			     }
+			})();
+
+			//API function call
+			 if ($.isFunction(window.btPausePressed)) {
+				btPausePressed("");
+			}
+
+		}
+
+	}
+
+	function pipeOnPlayOffer(error, sdpOffer){
+	  if(error) return pipeOnError(error);
+
+	  co(function*(){
+	    try{
+	      if(!client) client = yield kurentoClient(args.ws_uri);
+
+	      pipeline = yield client.create('MediaPipeline');
+
+	      var webRtc = yield pipeline.create('WebRtcEndpoint');
+	      setIceCandidateCallbacks(webRtcPeer, webRtc, pipeOnError)
+
+	      player = yield pipeline.create('PlayerEndpoint', {uri : args.file_uri});
+
+	      player.on('EndOfStream', pipeStopPlayer);
+
+	      yield player.connect(webRtc);
+
+	      var sdpAnswer = yield webRtc.processOffer(sdpOffer);
+	      webRtc.gatherCandidates(pipeOnError);
+	      webRtcPeer.processAnswer(sdpAnswer);
+
+	      $("#pipeVideoInput").prop('muted', false);
+
+	      yield player.play()
+
+	      pipeSetStatus(PLAYING)
+
+	      lastStreamTime = 0;
+	      recordCounter = setInterval(pipeCounterForPlayer ,1000);
+	      intervals.push(recordCounter);
+
+	      pipeHideMessage();
+
+	    }
+	    catch(e)
+	    {
+	      pipeOnError(e);
+	    }
+	  })();
+	}
+
+	function pipeOnStartOffer(error, sdpOffer){
+
+	  if(error) return pipeOnError(error)
+
+	  co(function*(){
+	    try{
+	      if(!client)
+		 client = yield kurentoClient(args.ws_uri);
+
+	      pipeline = yield client.create('MediaPipeline');
+
+	      var webRtc = yield pipeline.create('WebRtcEndpoint');
+	      webRtc.setMaxVideoRecvBandwidth(0);
+	      webRtc.setMinVideoSendBandwidth(0);
+	      webRtc.setOutputBitrate(6000000);
+	      setIceCandidateCallbacks(webRtcPeer, webRtc, pipeOnError)
+	      
+	      //console.log("LOCAL CANDIDATES " + localCandidates);
+	      
+	      if(localCandidates == true){
+		      
+		      var randomNr  = Math.floor((Math.random() * 999) + 1);
+		      var timestamp = Math.round(new Date().getTime()/1000);
+		      newFileName = "vsrtc"+timestamp+"_"+randomNr;
+		      args.file_uri = 'file:///var/www/html/v_rtc/'+newFileName+'.mp4';
+			
+		      var mProfile = "MP4";
+
+					/*
+		      if(micNumber == 0){
+			      mProfile = "MP4_VIDEO_ONLY";
+		      }
+		      if(camNumber == 0){
+			      mProfile = "MP4_AUDIO_ONLY";
+		      }*/
+			
+		      var recorder = yield pipeline.create('RecorderEndpoint', {mediaProfile: mProfile, uri: args.file_uri});
+
+		      yield webRtc.connect(recorder);
+		      yield webRtc.connect(webRtc);
+
+		      yield recorder.record();
+
+		      var sdpAnswer = yield webRtc.processOffer(sdpOffer);
+		      webRtc.gatherCandidates(pipeOnError);
+		      webRtcPeer.processAnswer(sdpAnswer)
+
+		      $('#pipeRec').attr("src", ("https:" == document.location.protocol ? "https://" : "http://")+'s1.addpipe.com/1.3/img/stop.png');
+		      $('#pipeRec').attr("title", stopBtnTxt);
+
+		      lastStreamTime = 0;
+		      recordCounter = setInterval(pipeCounter ,1000);
+		      intervals.push(recordCounter);
+		      
+		      streamStartTime = Date.now();
+		      streamCounter = setInterval(pipeStreamCounter, 100);
+		      intervals.push(streamCounter);
+
+		      pipeHideMessage();
+
+			//API function call
+			if ($.isFunction(window.onRecordingStarted)) {
+				onRecordingStarted("");
+			}
+	      }else{
+			pipeShowError("No local ICE candidates found");
+	      }
+
+	    } catch(e){
+	      pipeOnError(e);
+	    }
+	  })();
+	}
+
+	function pipeOnError(error) {
+		
+	//console.log(error);	
+		
+	  if(error)
+	  {
+	    console.error(error);
+	    if(error.name == "PermissionDeniedError"){
+		 //pipeSetStatus(DISABLED);
+		 pipeShowError(blockedTxt);
+		 
+		 //API function call
+		 if ($.isFunction(window.onCamAccess)) {
+			onCamAccess("false", "");
+		 }
+		 
+	    }else if (error.name = "DevicesNotFoundError"){
+		    //pipeSetStatus(DISABLED);
+		    pipeShowError(noCameraTxt);
+	    }
+
+
+	    //pipeStop();
+	  }
+	}
+
+	function pipeSaveVideo(){
+
+		pipeShowMessage(savingTxt);
+
+		 $.ajax({
+			type: "POST",
+			url: ("https:" == document.location.protocol ? "https://" : "http://")+"s4.addpipe.com/1.3/uploadFromRtc.php",
+			data: {streamName:newFileName, accountHash:flashvars["accountHash"], payload:(flashvars["payload"] ? encodeURIComponent(flashvars["payload"]) : ''), httpReferer:encodeURIComponent(window.location.href),environmentId:(flashvars["eid"] ? flashvars["eid"] : '1'), cameraName:encodeURIComponent(cam), microphoneName:encodeURIComponent(mic), streamDuration:streamElapsedTime},
+
+			success: function (data, status) {
+				//alert(data,status);
+
+				pipeShowMessage(savedTxt);
+				setTimeout(pipeHideMessage, 1000);
+
+				btSaveCanBeUsed = false;
+
+				//API function call
+			      if ($.isFunction(window.onSaveOk)) {
+					onSaveOk(newFileName, streamElapsedTime, "", cam, mic, "", "MPEG Audio Layer 2", "H.264", "webm", data);
+				}
+			}
+		 });
+
+		if(flashvars["asv"] == 0){
+			//$('#pipeSaveVideo').attr('disabled',  true);
+			  $('#pipeSaveVideo').off("click");
+			  $('#pipeSaveVideo').attr("class", "pipeBtnOff");
+		}
+	}
+
+	function pipeShowMessage(msg) {
+	  /*for (var i = 0; i < arguments.length; i++) {
+	    //arguments[i].poster = 'img/transparent-1px.png';
+	    arguments[i].style.background = "center transparent url('"+('https:' == document.location.protocol ? 'https://' : 'http://') + "s1.addpipe.com/1.3/loaderb16.gif') no-repeat";
+	  }*/
+
+	    document.getElementById('pipeMsgOverlay').innerHTML = '<div>'+msg+'</div>';
+	    $("#pipeMsgOverlay").show();
+	    if ($("#pipeAudioOnly").length){
+		    $("#pipeAudioOnly").hide();
+	    }
+	}
+
+	function pipeHideMessage() {
+	  /*for (var i = 0; i < arguments.length; i++) {
+	    arguments[i].src = '';
+	    //arguments[i].poster = 'img/webrtc.png';
+	    arguments[i].style.background = '';
+	  }*/
+
+	  $("#pipeMsgOverlay").hide();
+	  if ($("#pipeAudioOnly").length){
+		    $("#pipeAudioOnly").show();
+	  }
+	  
+	}
+	
+	function pipeShowError(msg, add = 0){
+		var css = document.createElement("style");
+		css.type = "text/css";
+		css.innerHTML = "div.pipeError{width:"+size["width"]+"px;height:"+size["height"]+"px;background-color:#363738;border-radius:"+cornerRadius+"px;display:none;}div.pipeError p {margin:0;text-align:center;vertical-align: middle;line-height:"+size["height"]+"px;font-family:sans-serif;font-size:18px;color:#ffffff;}";
+	       document.body.appendChild(css);
+		
+		if(add == 0){
+			document.getElementById('hdfvr-content').innerHTML = '<div class="pipeError"><p>'+msg+'</p></div>';
+			$(".pipeError").show();			
+		}else{
+			$('#hdfvr-content').append('<div class="pipeError"><p>'+msg+'</p></div>');
+			$(".pipeError").fadeIn(450);
+		}
+	}
+	
+	function pipeCounter() {
+
+		if(lastStreamTime == flashvars["mrt"]){
+			autoStopped = true;
+			pipeStop();
+		}
+		
+		//enable the stop button after 2 seconds
+		if(lastStreamTime == 2){
+			pipeSetStatus(RECORDING);
+		}
+
+	    document.getElementById("pipeCounter").innerHTML = digits(lastStreamTime)+'/'+digits(flashvars["mrt"]);
+	    lastStreamTime ++;
+	}
+
+	function pipeCounterForPlayer() {
+	    lastStreamTime ++;
+	    document.getElementById("pipeCounter").innerHTML = digits(lastStreamTime)+'/'+digits(actualStreamTime);
+	}
+	
+	function pipeStreamCounter(){
+		streamElapsedTime = ((Date.now() - streamStartTime)/ 1000).toFixed(2) - 1;
+		//console.log(streamElapsedTime);
+	}
+
+	function visitPipe(){
+		window.location.href="https://addpipe.com?ref=expired";
+	}
+
+	function refPipe(){
+		window.location.href="https://addpipe.com?ref=embed";
+	}
+
+
+	// ====== JS Control API ======
+
+	document.VideoRecorder.record = function (){
+		if ($('div.pipeError').length == 0 && $("#pipeRec").hasClass("pipeBtn") && state != "recording"){
+			pipeStart();
+		}
+	}
+
+	document.VideoRecorder.stopVideo = function (){
+		if ($('div.pipeError').length == 0 && $("#pipeRec").hasClass("pipeBtn") && state == "recording"){
+			pipeStop();
+		}
+	}
+
+	document.VideoRecorder.playVideo = function (){
+		if ($('div.pipeError').length == 0 && $("#pipePlay").hasClass("pipeBtn") && state != "playing"){
+			pipePlay();
+		}
+	}
+
+	document.VideoRecorder.pause = function (){
+		if ($('div.pipeError').length == 0 && $("#pipePlay").hasClass("pipeBtn") && state == "playing"){
+			pipePausePlayback();
+		}
+	}
+
+	document.VideoRecorder.save = function (){
+		if($("#pipeSaveVideo").hasClass("pipeBtn")){
+			pipeSaveVideo();
+		}
+	}
+
+	document.VideoRecorder.getStreamTime = function (){
+		if ($('div.pipeError').length == 0){
+			return streamElapsedTime;
+		}
+	}
+
+	document.VideoRecorder.getStreamName = function (){
+		if(newFileName && $('div.pipeError').length == 0){
+			return newFileName;
+		}
+	}
+
+	/** Utils **/
+	function digits(nbr){
+		var min = Math.floor(nbr/60);
+		var sec = Math.floor(nbr%60);
+		var str  = zero(min) + ':' + zero(sec);
+		return str;
+	};
+
+	function zero(nbr) {
+		if(nbr < 10) {
+			return '0'+nbr;
+		} else {
+			return ''+nbr;
+		}	
+	};
+})(jQuery);
+
+function removePipeRecorder(){
+	if (webRtcPeer) {
+		webRtcPeer.dispose();
+		webRtcPeer = null;
+       }
+	
+	for (var i = 0;  i < intervals.length; i++) {
+		  clearInterval(intervals[i]);
+	}
+	
+	document.getElementById('hdfvr-content').innerHTML = "";
+	
+	pipeRecorderRemoved = true;
+}
+</script>
+
+<div id="hdfvr-content" ></div>
+latest
+    </ion-nav-bar>
+    <!--
+      The views will be rendered in the <ion-nav-view> directive below
+      Templates are in the /templates folder (but you could also
+      have templates inline in this html file if you'd like).
+    -->
+    <ion-nav-view></ion-nav-view>
+
+
+    
+  </body>
+</html>
