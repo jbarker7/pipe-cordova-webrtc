@@ -1085,17 +1085,15 @@ SoundMeter.prototype.stop = function() {
 		      var randomNr  = Math.floor((Math.random() * 999) + 1);
 		      var timestamp = Math.round(new Date().getTime()/1000);
 		      newFileName = "vsrtc"+timestamp+"_"+randomNr;
-		      args.file_uri = 'file:///var/www/html/v_rtc/'+newFileName+'.mp4';
+		      args.file_uri = 'file:///var/www/html/v_rtc/'+newFileName+'.webm';
 			
 		      var mProfile = "MP4";
-
-					/*
 		      if(micNumber == 0){
 			      mProfile = "MP4_VIDEO_ONLY";
 		      }
 		      if(camNumber == 0){
 			      mProfile = "MP4_AUDIO_ONLY";
-		      }*/
+		      }
 			
 		      var recorder = yield pipeline.create('RecorderEndpoint', {mediaProfile: mProfile, uri: args.file_uri});
 
