@@ -15,6 +15,7 @@ angular.module('starter', ['ionic', 'starter.controllers', 'starter.services'])
     if (window.cordova && window.cordova.plugins && window.cordova.plugins.iosrtc && window.device.platform === 'iOS') {
       console.log('before');
       cordova.plugins.iosrtc.registerGlobals();
+      cordova.plugins.iosrtc.debug.enable('iosrtc*');
       console.log('after');
       // load adapter.js
       var script = document.createElement("script");

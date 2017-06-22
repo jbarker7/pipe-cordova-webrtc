@@ -1,4 +1,8 @@
 {
   "name": "test2",
-  "app_id": ""
+  "app_id": "",
+  "type": "ionic1",
+  "watchPatterns": [
+    "scss/**/*"
+  ]
 }
